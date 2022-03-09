@@ -5,14 +5,20 @@
 #include <unistd.h>
 
 int flag = 1, End = 1;
-// pthread_cond_t flagviewer;
-// pthread_mutex_t flagcontroler
+
+pthread_cond_t flagviewer;
+pthread_mutex_t flagcontroler;
+
 void* run(void* time){
     int seconds = *(int *) time;
     for(int i=seconds;i>0;i--){
+        pthread_mutex_lock(&flagcontroler);
         while(!flag){
-            sleep(1);
+            printf("Enter a non 0 value to continue :");
+            fflush(NULL);
+            pthread_cond_wait(&flagviewer,&flagcontroler);
         }
+        pthread_mutex_unlock(&flagcontroler);
         int k = i;
         int s = k%60; k = k/60;
 		int m = k%60; k = k/60;
@@ -27,16 +33,28 @@ void* run(void* time){
 
 void* listen(void* empty){
     while(End){
-        scanf("%d",&flag);
+        int flaglocal=flag;
+        scanf("%d",&flaglocal);
+        pthread_mutex_lock(&flagcontroler);
+        flag = flaglocal;
+        pthread_cond_signal(&flagviewer);
+        pthread_mutex_unlock(&flagcontroler);
     }
+}
+int fill(){
+    int in,out;
+    printf("Iclock\n");
+    printf("Hours: "); scanf("%d",&in); out = in*3600;
+    printf("Minutes: "); scanf("%d",&in); out += in*60;
+    printf("Seconds: "); scanf("%d",&in); out += in;
+    return out;
 }
 
 int main(){
     pthread_t clock,event;
-    int N = 3600;
-    pthread_create(&clock,NULL,&run,&N);
+    int seconds = fill();
+    pthread_create(&clock,NULL,&run,&seconds);
     pthread_create(&event,NULL,&listen,NULL);
     pthread_join(clock,NULL);
-    pthread_join(event,NULL);
     return 0;
 }
